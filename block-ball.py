@@ -2,6 +2,7 @@
 from tkinter import *
 import random
 import numpy as np
+import time
 
 # ゲーム中で使う変数の一覧
 blocks = []
@@ -14,6 +15,8 @@ row = 6
 column = 24
 state = np.zeros((row,column), dtype=np.int8)
 next_state = np.empty((row,column), dtype=np.int8)
+start_time = ""
+game_time = ""
 
 # ウィンドウの作成
 win = Tk()
@@ -22,8 +25,10 @@ cv.pack()
 
 # ゲームの初期化
 def init_game():
-    global is_gameover, point, row, column
+    global is_gameover, point, row, column, start_time, game_time
     is_gameover = False
+    game_time = ""
+    start_time = time.time()
     ball["y"] = 250
     ball["diry"] = -10
     point = 0
@@ -31,14 +36,13 @@ def init_game():
     for iy in range(0, row):
         for ix in range(0, column):
             state[iy, ix] = random.randint(0, 1)
-            s = state[iy, ix]
             color = "red"
             if (iy + ix) % 2 == 1: color = "blue"
             x1 = 4 + ix * block_size["x"]
             x2 = x1 + block_size["x"]
             y1 = 4 + iy * block_size["y"]
             y2 = y1 + block_size["y"]
-            blocks.append([x1, y1, x2, y2, color, iy, ix, s])
+            blocks.append([x1, y1, x2, y2, color, iy, ix])
     win.title("START")
 
 # オブジェクトを描画する
@@ -47,10 +51,8 @@ def draw_objects():
     cv.create_rectangle(0, 0, 600, 400, fill="black", width=0)
     # ブロックを一つずつ描画
     for w in blocks:
-        x1, y1, x2, y2, c ,iy, ix, s = w
-        b_num = iy*6+ix
-        bn = str(b_num)
-        if state[iy,ix] == 1: cv.create_rectangle(x1, y1, x2, y2, fill=c, width=0, tag=bn)
+        x1, y1, x2, y2, c ,iy, ix = w
+        if state[iy,ix] == 1: cv.create_rectangle(x1, y1, x2, y2, fill=c, width=0)
     # ボールを描画
     cv.create_oval(ball["x"] - ball["w"], ball["y"] - ball["w"],
         ball["x"] + ball["w"], ball["y"] + ball["w"], fill="green")
@@ -60,7 +62,7 @@ def draw_objects():
 
 # ボールの移動
 def move_ball():
-    global is_gameover, point
+    global is_gameover, point, game_time
     if is_gameover: return
     bx = ball["x"] + ball["dirx"]
     by = ball["y"] + ball["diry"]
@@ -85,37 +87,21 @@ def move_ball():
     # ボールがブロックに当たった？
     # hit_i = -1
     for i, w in enumerate(blocks):
-        x1, y1, x2, y2, color, iy, ix, s = w
-        b_num = iy*6+ix
-        # bn = str(b_num)
+        x1, y1, x2, y2, color, iy, ix = w
         w3 = ball["w"] / 3
         if state[iy,ix] == 1:
             if (x1-w3 <= bx <= x2+w3) and (y1-w3 <= by <= y2+w3):
-                hit_i = i
-                # ply = str(iy)
-                # plx = str(ix)
-                # place = "y=" + ply + "x=" + plx 
-                # print(place)
-                # print(len(blocks))
                 state[iy,ix] = 0
                 if random.randint(0, 1) == 0: ball["dirx"] *= -1
                 ball["diry"] *= -1
                 point += 10
                 win.title("GAME SCORE = " + str(point))
                 break
-    # if hit_i >= 0:
-    #     # del blocks[hit_i]
-    #     print(len(blocks))
-    #     # cv.delete(bn)
-    #     state[iy,ix] = 0
-    #     if random.randint(0, 1) == 0: ball["dirx"] *= -1
-    #     ball["diry"] *= -1
-    #     point += 10
-    #     win.title("GAME SCORE = " + str(point))
     # ゲームオーバー？
     if by >= 400:
-        win.title("Game Over!! score=" + str(point))
-        is_gameover = True
+        if game_time == "":
+            win.title("Game Over!! score=" + str(point))
+            is_gameover = True
     if 0 <= bx <= 600: ball["x"] = bx
     if 0 <= by <= 400: ball["y"] = by
 
@@ -146,15 +132,22 @@ def life_game():
     state, next_state = next_state, state
     # ブロックを一つずつ描画
     for w in blocks:
-        x1, y1, x2, y2, c ,iy, ix, s = w
-        b_num = iy*6+ix
-        bn = str(b_num)
-        if s == 1:
-            cv.create_rectangle(x1, y1, x2, y2, fill=c, width=0, tag=bn)
-        # else: cv.delete(bn)
-        # else: del blocks[b_num]
+        x1, y1, x2, y2, c ,iy, ix = w
+        if state[iy,ix] == 1:
+            cv.create_rectangle(x1, y1, x2, y2, fill=c, width=0)
+
+def game_clear():
+    global is_gameover, game_time
+    if np.any(state) != True:
+        if game_time == "":
+            clear_time = time.time()
+            game_time = clear_time - start_time
+            game_time = int(game_time)
+            win.title("Clear the game!! score=" + str(point) + " time=" + str(game_time) + "s")
+            is_gameover = True
 
 def game_loop():
+    game_clear()
     draw_objects()
     move_ball()
     win.after(50, game_loop)
