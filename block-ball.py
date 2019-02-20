@@ -30,14 +30,15 @@ def init_game():
     # ブロックを配置する
     for iy in range(0, row):
         for ix in range(0, column):
+            state[iy, ix] = random.randint(0, 1)
+            s = state[iy, ix]
             color = "red"
             if (iy + ix) % 2 == 1: color = "blue"
             x1 = 4 + ix * block_size["x"]
             x2 = x1 + block_size["x"]
             y1 = 4 + iy * block_size["y"]
             y2 = y1 + block_size["y"]
-            blocks.append([x1, y1, x2, y2, color, iy, ix])
-            state[iy, ix] = random.randint(0, 1)
+            blocks.append([x1, y1, x2, y2, color, iy, ix, s])
     win.title("START")
 
 # オブジェクトを描画する
@@ -46,9 +47,9 @@ def draw_objects():
     cv.create_rectangle(0, 0, 600, 400, fill="black", width=0)
     # ブロックを一つずつ描画
     for w in blocks:
-        x1, y1, x2, y2, c ,iy, ix = w
-        s = state[iy,ix]
-        if s == 1: cv.create_rectangle(x1, y1, x2, y2, fill=c, width=0)
+        x1, y1, x2, y2, c ,iy, ix, s = w
+        b_num = iy*6+ix
+        if s == 1: cv.create_rectangle(x1, y1, x2, y2, fill=c, width=0, tag=b_num)
     # ボールを描画
     cv.create_oval(ball["x"] - ball["w"], ball["y"] - ball["w"],
         ball["x"] + ball["w"], ball["y"] + ball["w"], fill="green")
@@ -83,13 +84,18 @@ def move_ball():
     # ボールがブロックに当たった？
     hit_i = -1
     for i, w in enumerate(blocks):
-        x1, y1, x2, y2, color, iy, ix = w
+        x1, y1, x2, y2, color, iy, ix, s = w
+        b_num = iy*6+ix
         w3 = ball["w"] / 3
-        if (x1-w3 <= bx <= x2+w3) and (y1-w3 <= by <= y2+w3):
-            hit_i = i
-            break
+        if s == 1:
+            if (x1-w3 <= bx <= x2+w3) and (y1-w3 <= by <= y2+w3):
+                hit_i = i
+                break
     if hit_i >= 0:
         del blocks[hit_i]
+        print(len(blocks))
+        # cv.delete(b_num)
+        state[iy,ix] = 0
         if random.randint(0, 1) == 0: ball["dirx"] *= -1
         ball["diry"] *= -1
         point += 10
@@ -102,7 +108,7 @@ def move_ball():
     if 0 <= by <= 400: ball["y"] = by
 
 def life_game():
-    global row, column, state, next_state
+    global is_gameover, row, column, state, next_state
     # ライフゲーム
     for i in range(0, row):
         for j in range(0, column):
@@ -126,11 +132,16 @@ def life_game():
             else:
                 next_state[i,j] = 0
     state, next_state = next_state, state
+    cv.delete('all') # 既存の描画を破棄
+    cv.create_rectangle(0, 0, 600, 400, fill="black", width=0)
     # ブロックを一つずつ描画
     for w in blocks:
-        x1, y1, x2, y2, c ,iy, ix = w
-        s = state[iy,ix]
-        if s == 1: cv.create_rectangle(x1, y1, x2, y2, fill=c, width=0)
+        x1, y1, x2, y2, c ,iy, ix, s = w
+        b_num = iy*6+ix
+        if s == 1:
+            cv.create_rectangle(x1, y1, x2, y2, fill=c, width=0, tag=b_num)
+        # else: cv.delete(b_num)
+        else: del blocks[b_num]
 
 def game_loop():
     draw_objects()
